@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import com.expensesapp.server.model.enums.ExpenseCategory;
+import com.expensesapp.server.model.enums.PaymentType;
 import com.expensesapp.server.model.enums.RecurrencePeriod;
 
 import jakarta.persistence.Column;
@@ -19,12 +20,13 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
 @Entity
 @Table(name = "expenses")
@@ -33,6 +35,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
 public class Expense {
 
     @Id
@@ -42,18 +45,25 @@ public class Expense {
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @ToString.Exclude
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "payment_method_id")
-    private PaymentMethod paymentMethod;
+    // @NotNull
+    // @ManyToOne(fetch = FetchType.LAZY)
+    // @JoinColumn(name = "payment_method_id", nullable = false)
+    // @ToString.Exclude
+    // private PaymentMethod paymentMethod;
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_type", nullable = false)
+    private PaymentType paymentType;
 
     @NotNull
     @Column(nullable = false)
     private String description;
 
     @NotNull
-    @PositiveOrZero
+    @Positive(message = "Expense amount must be greater than zero")
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal value;
 

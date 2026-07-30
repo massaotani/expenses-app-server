@@ -47,7 +47,7 @@ public class NotebookReminder {
     @Column(nullable = false)
     private String title;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 5000)
     private String description;
 
     @PositiveOrZero

@@ -1,0 +1,18 @@
+package com.expensesapp.server.repository;
+
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import com.expensesapp.server.model.Expense;
+
+@Repository
+public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
+    // Fetch every expense recorded by a specific user profile (sorted newest first)
+    List<Expense> findByUser_IdOrderByDueDateDesc(UUID userId);
+    
+    // Fetch all transactions charged to a specific credit card or wallet
+    // List<Expense> findByPaymentMethod_IdOrderByDueDateDesc(UUID paymentMethodId);
+}

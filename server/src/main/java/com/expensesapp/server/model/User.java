@@ -43,7 +43,11 @@ public class User {
     @PositiveOrZero
     @Column(name = "investment_pot", nullable = false, precision = 12, scale = 2)
     private BigDecimal investmentPot;
-    
+
+    @NotNull
+    @Builder.Default // Ensures Lombok builder honors the default value
+    @Column(name = "monthly_expenses", nullable = false, precision = 12, scale = 2)
+    private BigDecimal monthlyExpenses = BigDecimal.ZERO;
     // The userType field has been deleted from here completely!
     // @NotNull
     // @Enumerated(EnumType.STRING)

@@ -32,6 +32,8 @@ build/
 ### VS Code ###
 .vscode/
 
-# Sensitive configuration files
-.env
+# Ignore the properties file inside the server module
 server/src/main/resources/application.properties
+
+# Ignore all compiled Java target folders
+**/target/

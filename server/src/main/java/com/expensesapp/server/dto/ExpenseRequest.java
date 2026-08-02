@@ -2,6 +2,7 @@ package com.expensesapp.server.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import com.expensesapp.server.model.enums.ExpenseCategory;
 import com.expensesapp.server.model.enums.PaymentType;
@@ -28,11 +29,13 @@ public class ExpenseRequest {
     @NotNull(message = "Due date is required")
     private LocalDateTime dueDate;
 
-    @NotNull(message = "Payment type selection is required (CREDIT, DEBIT, or CASH)")
+    @NotNull(message = "Payment type selection is required (CARD or CASH)")
     // private UUID paymentMethodId;
     private PaymentType paymentType;
 
     private boolean isPaid;
+
+    private UUID cardId;
 
     @NotNull(message = "Recurrence period is required (use NONE if one-time)")
     private RecurrencePeriod recurrencePeriod;

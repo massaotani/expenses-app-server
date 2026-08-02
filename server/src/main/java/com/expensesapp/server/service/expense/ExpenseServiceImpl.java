@@ -12,11 +12,14 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.expensesapp.server.dto.ExpenseRequest;
 import com.expensesapp.server.model.AuthUser;
+import com.expensesapp.server.model.Card;
 import com.expensesapp.server.model.Expense;
 import com.expensesapp.server.model.User;
+import com.expensesapp.server.model.enums.CardType;
 import com.expensesapp.server.model.enums.PaymentType;
+import com.expensesapp.server.repository.CardRepository;
 import com.expensesapp.server.repository.ExpenseRepository;
-import com.expensesapp.server.repository.UserRepository;
+import com.expensesapp.server.repository.UserRepository; // FIXED: Added missing import
 
 import lombok.RequiredArgsConstructor;
 
@@ -24,8 +27,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ExpenseServiceImpl implements ExpenseService {
     private final ExpenseRepository expenseRepository;
-    // private final PaymentMethodRepository paymentMethodRepository;
     private final UserRepository userRepository;
+    private final CardRepository cardRepository; // FIXED: Injected missing repository
 
     @Override
     @Transactional(readOnly = true)
@@ -36,11 +39,27 @@ public class ExpenseServiceImpl implements ExpenseService {
     @Override
     @Transactional
     public Expense createExpense(ExpenseRequest request, AuthUser authUser) {
-        // 1. Fetch the managed User record to safely perform financial updates
         User user = userRepository.findById(authUser.getUserProfile().getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User profile not found"));
 
-        // 2. Build out the simplified Expense configuration
+        Card card = null;
+
+        // 1. Conditional Card Validation
+        if (request.getPaymentType() == PaymentType.CARD) {
+            if (request.getCardId() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Card selection is required for card payments.");
+            }
+
+            card = cardRepository.findById(request.getCardId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Selected card not found."));
+
+            if (!card.getUser().getId().equals(user.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized access to this card.");
+            }
+        }
+
+        // 2. Build out the Expense Engine Configuration
         Expense expense = Expense.builder()
                 .description(request.getDescription())
                 .value(request.getValue())
@@ -48,20 +67,23 @@ public class ExpenseServiceImpl implements ExpenseService {
                 .dueDate(request.getDueDate())
                 .isPaid(request.isPaid())
                 .recurrencePeriod(request.getRecurrencePeriod())
-                .paymentType(request.getPaymentType()) // Set the direct enum type
+                .paymentType(request.getPaymentType())
+                .card(card) // Will be null if payment type is CASH
                 .user(user)
                 .build();
 
-        // 3. Process immediate financial shifts if the expense is logged as paid
+        // 3. Process immediate balance adjustments if the bill is already paid
         if (request.isPaid()) {
             expense.setPaidAt(LocalDateTime.now());
 
-            // Execute down-scaling on available income pools for cash/debit entries
-            processDirectDeduction(user, request.getPaymentType(), request.getValue());
+            // Deduct from card balance if card was used
+            if (expense.getPaymentType() == PaymentType.CARD && card != null) {
+                processCardDeduction(card, request.getValue());
+            }
 
-            // Accumulate onto the user's running monthly tracker
+            // Cash payments bypass card processing completely and just update the total running cost
             user.setMonthlyExpenses(user.getMonthlyExpenses().add(request.getValue()));
-            userRepository.save(user); // Commits the updated metrics to the DB
+            userRepository.save(user);
         }
 
         return expenseRepository.save(expense);
@@ -86,26 +108,29 @@ public class ExpenseServiceImpl implements ExpenseService {
 
         User user = expense.getUser();
 
-        // Apply deductions during manual bill settlement
-        processDirectDeduction(user, expense.getPaymentType(), expense.getValue());
-
+        // FIXED: Route card settlements to card processing logic, matching createExpense behavior
+        if (expense.getPaymentType() == PaymentType.CARD && expense.getCard() != null) {
+            processCardDeduction(expense.getCard(), expense.getValue());
+        }
+        
+        // Cash transactions skip card alterations entirely and only increment the total spent so far
         user.setMonthlyExpenses(user.getMonthlyExpenses().add(expense.getValue()));
         userRepository.save(user);
 
         return expenseRepository.save(expense);
     }
 
-    private void processDirectDeduction(User user, PaymentType type, BigDecimal value) {
-        if (type == PaymentType.CASH || type == PaymentType.DEBIT) {
-            BigDecimal newIncomeBalance = user.getMonthlyIncome().subtract(value);
-
-            if (newIncomeBalance.compareTo(BigDecimal.ZERO) < 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Transaction declined: Insufficient funds in your Income Pot.");
+    private void processCardDeduction(Card card, BigDecimal value) {
+        if (card.getCardType() == CardType.CREDIT) {
+            // Credit cards track liabilities going up
+            card.setCurrentBalance(card.getCurrentBalance().add(value));
+        } else if (card.getCardType() == CardType.DEBIT) {
+            // Debit cards track active liquid funds going down
+            if (card.getCurrentBalance().compareTo(value) < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient funds on this debit card.");
             }
-            user.setMonthlyIncome(newIncomeBalance);
+            card.setCurrentBalance(card.getCurrentBalance().subtract(value));
         }
-        // If type == CREDIT, we don't touch monthlyIncome, it just builds
-        // user.monthlyExpenses
+        cardRepository.save(card);
     }
 }

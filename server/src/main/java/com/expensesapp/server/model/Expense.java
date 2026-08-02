@@ -53,10 +53,20 @@ public class Expense {
     // @JoinColumn(name = "payment_method_id", nullable = false)
     // @ToString.Exclude
     // private PaymentMethod paymentMethod;
+    // @NotNull
+    // @Enumerated(EnumType.STRING)
+    // @Column(name = "payment_type", nullable = false)
+    // private PaymentType paymentType;
+
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_type", nullable = false)
-    private PaymentType paymentType;
+    private PaymentType paymentType; // CASH or CARD
+
+    // Link an optional card relationship
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "card_id", nullable = true) // Nullable because CASH doesn't use a card
+    private Card card;
 
     @NotNull
     @Column(nullable = false)

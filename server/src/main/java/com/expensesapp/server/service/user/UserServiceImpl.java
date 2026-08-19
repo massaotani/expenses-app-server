@@ -1,12 +1,11 @@
 package com.expensesapp.server.service.user;
 
-import java.util.UUID;
-
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.expensesapp.server.dto.UserResponseDto;
+import com.expensesapp.server.model.AuthUser;
 import com.expensesapp.server.model.User;
 import com.expensesapp.server.repository.UserRepository;
 
@@ -19,18 +18,16 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
 
     @Override
-    public UserResponseDto getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("User is not authenticated");
+    public UserResponseDto getCurrentUser(AuthUser authUser) {
+        if (authUser == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User is not authenticated");
         }
 
-        String userIdStr = authentication.getName();
-        UUID userId = UUID.fromString(userIdStr);
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userIdStr));
+        User user = userRepository.findById(authUser.getId())
+                .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "User not found with ID: " + authUser.getId()
+        ));
 
         return UserResponseDto.fromEntity(user);
     }

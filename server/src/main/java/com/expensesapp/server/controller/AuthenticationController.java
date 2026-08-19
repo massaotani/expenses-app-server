@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.expensesapp.server.dto.AuthenticationResponse;
 import com.expensesapp.server.dto.LoginRequest;
 import com.expensesapp.server.dto.RegisterRequest;
+import com.expensesapp.server.dto.TokenRefreshRequest;
 import com.expensesapp.server.service.authentication.AuthenticationService;
 
 import jakarta.validation.Valid;
@@ -29,5 +30,10 @@ public class AuthenticationController {
     @PostMapping("/login")
     public ResponseEntity<AuthenticationResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(service.authenticate(request));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthenticationResponse> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
+        return ResponseEntity.ok(service.refreshToken(request));
     }
 }

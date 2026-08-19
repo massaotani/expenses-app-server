@@ -14,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
-
     private final UserRepository userRepository;
 
     @Override
@@ -23,10 +22,10 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User is not authenticated");
         }
 
-        User user = userRepository.findById(authUser.getId())
+        User user = userRepository.findById(authUser.getUserProfile().getId())
                 .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND,
-                "User not found with ID: " + authUser.getId()
+                "User not found with ID: " + authUser.getUserProfile().getId()
         ));
 
         return UserResponseDto.fromEntity(user);

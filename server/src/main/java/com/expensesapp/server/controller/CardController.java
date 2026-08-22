@@ -1,23 +1,16 @@
 package com.expensesapp.server.controller;
 
 import java.util.List;
+import java.util.UUID;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.bind.annotation.*;
 
 import com.expensesapp.server.dto.CardRequest;
 import com.expensesapp.server.model.AuthUser;
 import com.expensesapp.server.model.Card;
-import com.expensesapp.server.model.User;
-import com.expensesapp.server.repository.CardRepository;
-import com.expensesapp.server.repository.UserRepository;
+import com.expensesapp.server.service.card.CardService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,30 +19,26 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/v1/cards")
 @RequiredArgsConstructor
 public class CardController {
-
-    private final CardRepository cardRepository;
-    private final UserRepository userRepository;
-
-    @PostMapping
-    public ResponseEntity<Card> addCard(
-            @Valid @RequestBody CardRequest request,
-            @AuthenticationPrincipal AuthUser authUser) {
-        
-        User user = userRepository.findById(authUser.getUserProfile().getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-
-        Card card = Card.builder()
-                .name(request.getName())
-                .cardType(request.getCardType())
-                .currentBalance(request.getCurrentBalance())
-                .user(user)
-                .build();
-
-        return ResponseEntity.ok(cardRepository.save(card));
-    }
+    private final CardService cardService;
 
     @GetMapping
     public ResponseEntity<List<Card>> getMyCards(@AuthenticationPrincipal AuthUser authUser) {
-        return ResponseEntity.ok(cardRepository.findByUser_Id(authUser.getUserProfile().getId()));
+        return ResponseEntity.ok(cardService.getMyCards(authUser));
+    }
+
+    @PostMapping
+    public ResponseEntity<Card> createCard(@Valid @RequestBody CardRequest request, @AuthenticationPrincipal AuthUser authUser) {
+        return ResponseEntity.ok(cardService.createCard(request, authUser));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Card> updateCard(@PathVariable UUID id, @Valid @RequestBody CardRequest request, @AuthenticationPrincipal AuthUser authUser) {
+        return ResponseEntity.ok(cardService.updateCard(id, request, authUser));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteCard(@PathVariable UUID id, @AuthenticationPrincipal AuthUser authUser) {
+        cardService.deleteCard(id, authUser);
+        return ResponseEntity.noContent().build();
     }
 }

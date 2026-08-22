@@ -1,10 +1,11 @@
 package com.expensesapp.server.model;
 
-import java.math.BigDecimal;
 import java.util.UUID;
 
 import com.expensesapp.server.model.enums.CardType;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -15,36 +16,32 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Table(name = "cards")
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Card {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @NotNull
-    private String name; // e.g., "Chase Sapphire", "Main Debit Card"
+    @Column(nullable = false)
+    private String name;
 
-    @NotNull
     @Enumerated(EnumType.STRING)
-    private CardType cardType; // CREDIT or DEBIT
-
-    @Builder.Default
-    private BigDecimal currentBalance = BigDecimal.ZERO;
+    @Column(nullable = false)
+    private CardType cardType;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
     private User user;
 }

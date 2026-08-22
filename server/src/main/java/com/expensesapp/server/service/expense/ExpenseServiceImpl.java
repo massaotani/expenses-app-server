@@ -1,6 +1,5 @@
 package com.expensesapp.server.service.expense;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -15,17 +14,17 @@ import com.expensesapp.server.model.AuthUser;
 import com.expensesapp.server.model.Card;
 import com.expensesapp.server.model.Expense;
 import com.expensesapp.server.model.User;
-import com.expensesapp.server.model.enums.CardType;
 import com.expensesapp.server.model.enums.PaymentType;
 import com.expensesapp.server.repository.CardRepository;
 import com.expensesapp.server.repository.ExpenseRepository;
-import com.expensesapp.server.repository.UserRepository; // FIXED: Added missing import
+import com.expensesapp.server.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class ExpenseServiceImpl implements ExpenseService {
+
     private final ExpenseRepository expenseRepository;
     private final UserRepository userRepository;
     private final CardRepository cardRepository; // FIXED: Injected missing repository
@@ -44,11 +43,9 @@ public class ExpenseServiceImpl implements ExpenseService {
 
         Card card = null;
 
-        // 1. Conditional Card Validation
         if (request.getPaymentType() == PaymentType.CARD) {
             if (request.getCardId() == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Card selection is required for card payments.");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Card selection is required for card payments.");
             }
 
             card = cardRepository.findById(request.getCardId())
@@ -59,7 +56,6 @@ public class ExpenseServiceImpl implements ExpenseService {
             }
         }
 
-        // 2. Build out the Expense Engine Configuration
         Expense expense = Expense.builder()
                 .description(request.getDescription())
                 .value(request.getValue())
@@ -68,20 +64,12 @@ public class ExpenseServiceImpl implements ExpenseService {
                 .isPaid(request.isPaid())
                 .recurrencePeriod(request.getRecurrencePeriod())
                 .paymentType(request.getPaymentType())
-                .card(card) // Will be null if payment type is CASH
+                .card(card)
                 .user(user)
                 .build();
 
-        // 3. Process immediate balance adjustments if the bill is already paid
         if (request.isPaid()) {
             expense.setPaidAt(LocalDateTime.now());
-
-            // Deduct from card balance if card was used
-            if (expense.getPaymentType() == PaymentType.CARD && card != null) {
-                processCardDeduction(card, request.getValue());
-            }
-
-            // Cash payments bypass card processing completely and just update the total running cost
             user.setMonthlyExpenses(user.getMonthlyExpenses().add(request.getValue()));
             userRepository.save(user);
         }
@@ -108,29 +96,10 @@ public class ExpenseServiceImpl implements ExpenseService {
 
         User user = expense.getUser();
 
-        // FIXED: Route card settlements to card processing logic, matching createExpense behavior
-        if (expense.getPaymentType() == PaymentType.CARD && expense.getCard() != null) {
-            processCardDeduction(expense.getCard(), expense.getValue());
-        }
-        
-        // Cash transactions skip card alterations entirely and only increment the total spent so far
+        // Increment total spent since card balances are no longer tracked
         user.setMonthlyExpenses(user.getMonthlyExpenses().add(expense.getValue()));
         userRepository.save(user);
 
         return expenseRepository.save(expense);
-    }
-
-    private void processCardDeduction(Card card, BigDecimal value) {
-        if (card.getCardType() == CardType.CREDIT) {
-            // Credit cards track liabilities going up
-            card.setCurrentBalance(card.getCurrentBalance().add(value));
-        } else if (card.getCardType() == CardType.DEBIT) {
-            // Debit cards track active liquid funds going down
-            if (card.getCurrentBalance().compareTo(value) < 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient funds on this debit card.");
-            }
-            card.setCurrentBalance(card.getCurrentBalance().subtract(value));
-        }
-        cardRepository.save(card);
     }
 }

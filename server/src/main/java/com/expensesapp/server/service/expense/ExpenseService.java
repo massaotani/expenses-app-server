@@ -13,4 +13,8 @@ public interface ExpenseService {
     Expense createExpense(ExpenseRequest request, AuthUser authUser);
 
     Expense payUpcomingBill(UUID expenseId, AuthUser authUser);
+
+    Expense updateExpense(UUID id, ExpenseRequest request, AuthUser authUser);
+
+    void deleteExpense(UUID id, AuthUser authUser);
 }

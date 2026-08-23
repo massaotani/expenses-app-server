@@ -102,4 +102,74 @@ public class ExpenseServiceImpl implements ExpenseService {
 
         return expenseRepository.save(expense);
     }
+
+    @Override
+    @Transactional
+    public Expense updateExpense(UUID id, ExpenseRequest request, AuthUser authUser) {
+        Expense expense = expenseRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expense record not found"));
+
+        if (!expense.getUser().getId().equals(authUser.getUserProfile().getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized action.");
+        }
+
+        User user = expense.getUser();
+
+        // Adjust monthly expense tally if value or paid status changed
+        if (expense.isPaid()) {
+            user.setMonthlyExpenses(user.getMonthlyExpenses().subtract(expense.getValue()));
+        }
+
+        Card card = null;
+        if (request.getPaymentType() == PaymentType.CARD) {
+            if (request.getCardId() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Card selection is required for card payments.");
+            }
+            card = cardRepository.findById(request.getCardId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Selected card not found."));
+            if (!card.getUser().getId().equals(user.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized access to this card.");
+            }
+        }
+
+        expense.setDescription(request.getDescription());
+        expense.setValue(request.getValue());
+        expense.setCategory(request.getCategory());
+        expense.setDueDate(request.getDueDate());
+        expense.setPaymentType(request.getPaymentType());
+        expense.setRecurrencePeriod(request.getRecurrencePeriod());
+        expense.setPaid(request.isPaid());
+        expense.setCard(card);
+
+        if (request.isPaid()) {
+            if (expense.getPaidAt() == null) {
+                expense.setPaidAt(LocalDateTime.now());
+            }
+            user.setMonthlyExpenses(user.getMonthlyExpenses().add(request.getValue()));
+        } else {
+            expense.setPaidAt(null);
+        }
+
+        userRepository.save(user);
+        return expenseRepository.save(expense);
+    }
+
+    @Override
+    @Transactional
+    public void deleteExpense(UUID id, AuthUser authUser) {
+        Expense expense = expenseRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expense record not found"));
+
+        if (!expense.getUser().getId().equals(authUser.getUserProfile().getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized action.");
+        }
+
+        if (expense.isPaid()) {
+            User user = expense.getUser();
+            user.setMonthlyExpenses(user.getMonthlyExpenses().subtract(expense.getValue()));
+            userRepository.save(user);
+        }
+
+        expenseRepository.delete(expense);
+    }
 }

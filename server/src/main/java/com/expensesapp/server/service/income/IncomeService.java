@@ -13,5 +13,7 @@ public interface IncomeService {
 
     List<Income> getUserIncomes(AuthUser authUser);
 
+    Income updateIncome(UUID incomeId, IncomeDepositRequest request, AuthUser authUser);
+
     void deleteIncome(UUID incomeId, AuthUser authUser);
 }

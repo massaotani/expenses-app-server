@@ -59,6 +59,30 @@ public class IncomeServiceImpl implements IncomeService {
 
     @Override
     @Transactional
+    public Income updateIncome(UUID incomeId, IncomeDepositRequest request, AuthUser authUser) {
+        Income income = incomeRepository.findById(incomeId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Income entry not found"));
+
+        if (!income.getUser().getId().equals(authUser.getUserProfile().getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+        }
+
+        User user = income.getUser();
+        BigDecimal currentIncome = user.getMonthlyIncome() != null ? user.getMonthlyIncome() : BigDecimal.ZERO;
+
+        // Recalculate monthly total by removing old value and adding new value
+        BigDecimal updatedIncome = currentIncome.subtract(income.getValue()).add(request.getAmount());
+        user.setMonthlyIncome(updatedIncome.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : updatedIncome);
+        userRepository.save(user);
+
+        income.setDescription(request.getDescription());
+        income.setValue(request.getAmount());
+
+        return incomeRepository.save(income);
+    }
+
+    @Override
+    @Transactional
     public void deleteIncome(UUID incomeId, AuthUser authUser) {
         Income income = incomeRepository.findById(incomeId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Income entry not found"));

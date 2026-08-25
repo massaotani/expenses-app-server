@@ -17,7 +17,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import lombok.RequiredArgsConstructor;
 
-// Marks the registration/login public while completely blocking unauthenticated access to the user's details.
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -31,8 +30,8 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/auth/**", "/error").permitAll() // Open egistration/login paths
-                .anyRequest().authenticated() // Secure everything else
+                .requestMatchers("/api/v1/auth/**", "/api/v1/health", "/error").permitAll() // Added health route
+                .anyRequest().authenticated()
                 ).sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -43,7 +42,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("*")); // Allows requests from mobile apps & web
+        configuration.setAllowedOrigins(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
 

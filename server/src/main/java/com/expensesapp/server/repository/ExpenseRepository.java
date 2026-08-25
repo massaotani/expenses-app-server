@@ -12,6 +12,8 @@ import com.expensesapp.server.model.Expense;
 public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
     // Fetch every expense recorded by a specific user profile (sorted newest first)
     List<Expense> findByUser_IdOrderByDueDateDesc(UUID userId);
+
+    List<Expense> findByCard_Id(UUID cardId);
     
     // Fetch all transactions charged to a specific credit card or wallet
     // List<Expense> findByPaymentMethod_IdOrderByDueDateDesc(UUID paymentMethodId);

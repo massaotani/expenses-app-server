@@ -11,8 +11,10 @@ import org.springframework.web.server.ResponseStatusException;
 import com.expensesapp.server.dto.CardRequest;
 import com.expensesapp.server.model.AuthUser;
 import com.expensesapp.server.model.Card;
+import com.expensesapp.server.model.Expense;
 import com.expensesapp.server.model.User;
 import com.expensesapp.server.repository.CardRepository;
+import com.expensesapp.server.repository.ExpenseRepository;
 import com.expensesapp.server.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ public class CardServiceImpl implements CardService {
 
     private final CardRepository cardRepository;
     private final UserRepository userRepository;
+    private final ExpenseRepository expenseRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -79,6 +82,12 @@ public class CardServiceImpl implements CardService {
         if (!card.getUser().getId().equals(authUser.getUserProfile().getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized action");
         }
+
+        List<Expense> expenses = expenseRepository.findByCard_Id(id);
+        for (Expense expense : expenses) {
+            expense.setCard(null);
+        }
+        expenseRepository.saveAll(expenses);
 
         cardRepository.delete(card);
     }

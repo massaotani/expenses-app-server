@@ -27,12 +27,17 @@ public class CardServiceImpl implements CardService {
     @Override
     @Transactional(readOnly = true)
     public List<Card> getMyCards(AuthUser authUser) {
+        validateUserProfile(authUser);
         return cardRepository.findByUser_Id(authUser.getUserProfile().getId());
     }
 
     @Override
     @Transactional
     public Card createCard(CardRequest request, AuthUser authUser) {
+        validateUserProfile(authUser);
+
+        System.out.println("--> Card creation started for auth user: " + authUser.getEmail());
+
         User user = userRepository.findById(authUser.getUserProfile().getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User profile not found"));
 
@@ -48,6 +53,8 @@ public class CardServiceImpl implements CardService {
     @Override
     @Transactional
     public Card updateCard(UUID id, CardRequest request, AuthUser authUser) {
+        validateUserProfile(authUser);
+
         Card card = cardRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Card not found"));
 
@@ -64,6 +71,8 @@ public class CardServiceImpl implements CardService {
     @Override
     @Transactional
     public void deleteCard(UUID id, AuthUser authUser) {
+        validateUserProfile(authUser);
+
         Card card = cardRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Card not found"));
 
@@ -72,5 +81,11 @@ public class CardServiceImpl implements CardService {
         }
 
         cardRepository.delete(card);
+    }
+
+    private void validateUserProfile(AuthUser authUser) {
+        if (authUser == null || authUser.getUserProfile() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User account is missing a profile link.");
+        }
     }
 }

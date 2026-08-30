@@ -16,6 +16,7 @@ import com.expensesapp.server.model.Income;
 import com.expensesapp.server.model.User;
 import com.expensesapp.server.repository.IncomeRepository;
 import com.expensesapp.server.repository.UserRepository;
+import com.expensesapp.server.service.balance.MonthlyBalanceService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,6 +26,7 @@ public class IncomeServiceImpl implements IncomeService {
 
     private final IncomeRepository incomeRepository;
     private final UserRepository userRepository;
+    private final MonthlyBalanceService monthlyBalanceService;
 
     @Override
     @Transactional
@@ -35,16 +37,17 @@ public class IncomeServiceImpl implements IncomeService {
         Income income = new Income();
         income.setDescription(request.getDescription());
         income.setValue(request.getAmount());
-
-        // Use client-provided date if available, otherwise default to current server time
         income.setCreatedAt(request.getCreatedAt() != null ? request.getCreatedAt() : LocalDateTime.now());
         income.setUser(user);
 
         Income savedIncome = incomeRepository.save(income);
 
-        BigDecimal currentIncome = user.getMonthlyIncome() != null ? user.getMonthlyIncome() : BigDecimal.ZERO;
-        user.setMonthlyIncome(currentIncome.add(request.getAmount()));
-        userRepository.save(user);
+        monthlyBalanceService.adjustIncome(
+                user,
+                savedIncome.getCreatedAt().getYear(),
+                savedIncome.getCreatedAt().getMonthValue(),
+                request.getAmount()
+        );
 
         return savedIncome;
     }
@@ -65,18 +68,20 @@ public class IncomeServiceImpl implements IncomeService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
 
-        User user = income.getUser();
-        BigDecimal currentIncome = user.getMonthlyIncome() != null ? user.getMonthlyIncome() : BigDecimal.ZERO;
-
-        // Recalculate monthly total by removing old value and adding new value
-        BigDecimal updatedIncome = currentIncome.subtract(income.getValue()).add(request.getAmount());
-        user.setMonthlyIncome(updatedIncome.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : updatedIncome);
-        userRepository.save(user);
+        BigDecimal delta = request.getAmount().subtract(income.getValue());
 
         income.setDescription(request.getDescription());
         income.setValue(request.getAmount());
+        Income savedIncome = incomeRepository.save(income);
 
-        return incomeRepository.save(income);
+        monthlyBalanceService.adjustIncome(
+                income.getUser(),
+                income.getCreatedAt().getYear(),
+                income.getCreatedAt().getMonthValue(),
+                delta
+        );
+
+        return savedIncome;
     }
 
     @Override
@@ -89,12 +94,12 @@ public class IncomeServiceImpl implements IncomeService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
 
-        // Subtract value from User's total monthly income
-        User user = income.getUser();
-        BigDecimal currentIncome = user.getMonthlyIncome() != null ? user.getMonthlyIncome() : BigDecimal.ZERO;
-        BigDecimal updatedIncome = currentIncome.subtract(income.getValue());
-        user.setMonthlyIncome(updatedIncome.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : updatedIncome);
-        userRepository.save(user);
+        monthlyBalanceService.adjustIncome(
+                income.getUser(),
+                income.getCreatedAt().getYear(),
+                income.getCreatedAt().getMonthValue(),
+                income.getValue().negate()
+        );
 
         incomeRepository.delete(income);
     }

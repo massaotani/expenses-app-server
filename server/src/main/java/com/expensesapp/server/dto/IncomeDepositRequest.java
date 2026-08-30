@@ -1,6 +1,7 @@
 package com.expensesapp.server.dto;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,6 +17,8 @@ public class IncomeDepositRequest {
     @NotNull(message = "Amount is required")
     @Positive(message = "Amount must be greater than zero")
     private BigDecimal amount;
+
+    private LocalDateTime createdAt;
 
     // private String category;
     // private String paymentType;

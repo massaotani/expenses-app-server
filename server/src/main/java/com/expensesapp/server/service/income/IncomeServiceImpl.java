@@ -32,18 +32,16 @@ public class IncomeServiceImpl implements IncomeService {
         User user = userRepository.findById(authUser.getUserProfile().getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User profile not found"));
 
-        // 1. Create and persist the Income record
         Income income = new Income();
         income.setDescription(request.getDescription());
         income.setValue(request.getAmount());
-        // income.setCategory(request.getCategory() != null ? request.getCategory() : "SALARY");
-        // income.setPaymentType(request.getPaymentType() != null ? request.getPaymentType() : "CASH");
-        income.setCreatedAt(LocalDateTime.now());
+
+        // Use client-provided date if available, otherwise default to current server time
+        income.setCreatedAt(request.getCreatedAt() != null ? request.getCreatedAt() : LocalDateTime.now());
         income.setUser(user);
 
         Income savedIncome = incomeRepository.save(income);
 
-        // 2. Increment total monthlyIncome on User
         BigDecimal currentIncome = user.getMonthlyIncome() != null ? user.getMonthlyIncome() : BigDecimal.ZERO;
         user.setMonthlyIncome(currentIncome.add(request.getAmount()));
         userRepository.save(user);

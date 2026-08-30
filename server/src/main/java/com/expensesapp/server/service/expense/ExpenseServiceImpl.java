@@ -200,8 +200,8 @@ public class ExpenseServiceImpl implements ExpenseService {
     private void recalculateMonthlyBalance(User user, int year, int month) {
         List<Expense> monthExpenses = expenseRepository.findByUserIdAndYearAndMonth(user.getId(), year, month);
 
+        // Sum all expenses for the month regardless of payment status so newly added expenses immediately update totalExpenses
         BigDecimal totalSpent = monthExpenses.stream()
-                .filter(Expense::isPaid)
                 .map(Expense::getValue)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 

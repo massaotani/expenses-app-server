@@ -13,11 +13,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.expensesapp.server.dto.ExpenseRequest;
 import com.expensesapp.server.model.AuthUser;
 import com.expensesapp.server.model.Expense;
+import com.expensesapp.server.model.MonthlyBalance;
 import com.expensesapp.server.service.expense.ExpenseService;
 
 import jakarta.validation.Valid;
@@ -27,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/v1/expenses")
 @RequiredArgsConstructor
 public class ExpenseController {
+
     private final ExpenseService expenseService;
 
     @PostMapping
@@ -37,8 +40,19 @@ public class ExpenseController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Expense>> viewMyExpenses(@AuthenticationPrincipal AuthUser authUser) {
-        return ResponseEntity.ok(expenseService.getMyExpenses(authUser));
+    public ResponseEntity<List<Expense>> viewMyExpenses(
+            @AuthenticationPrincipal AuthUser authUser,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month) {
+        return ResponseEntity.ok(expenseService.getMyExpenses(authUser, year, month));
+    }
+
+    @GetMapping("/monthly-balance")
+    public ResponseEntity<MonthlyBalance> getMonthlyBalance(
+            @AuthenticationPrincipal AuthUser authUser,
+            @RequestParam Integer year,
+            @RequestParam Integer month) {
+        return ResponseEntity.ok(expenseService.getMonthlyBalance(authUser, year, month));
     }
 
     @PatchMapping("/{id}/pay")

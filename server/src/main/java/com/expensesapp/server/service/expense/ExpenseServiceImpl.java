@@ -51,13 +51,13 @@ public class ExpenseServiceImpl implements ExpenseService {
 
         return monthlyBalanceRepository.findByUser_IdAndYearAndMonth(user.getId(), year, month)
                 .orElseGet(() -> MonthlyBalance.builder()
-                        .user(user)
-                        .year(year)
-                        .month(month)
-                        .income(user.getMonthlyIncome())
-                        .totalExpenses(BigDecimal.ZERO)
-                        .savings(user.getMonthlyIncome())
-                        .build());
+                .user(user)
+                .year(year)
+                .month(month)
+                .income(user.getMonthlyIncome())
+                .totalExpenses(BigDecimal.ZERO)
+                .savings(user.getMonthlyIncome())
+                .build());
     }
 
     @Override
@@ -205,18 +205,28 @@ public class ExpenseServiceImpl implements ExpenseService {
                 .map(Expense::getValue)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal income = user.getMonthlyIncome();
-        BigDecimal savings = income.subtract(totalSpent);
-
+        // Fetch existing balance or create one with base income
         MonthlyBalance balance = monthlyBalanceRepository
                 .findByUser_IdAndYearAndMonth(user.getId(), year, month)
-                .orElseGet(() -> MonthlyBalance.builder()
-                        .user(user)
-                        .year(year)
-                        .month(month)
-                        .build());
+                .orElseGet(() -> {
+                    BigDecimal baseIncome = user.getMonthlyIncome() != null ? user.getMonthlyIncome() : BigDecimal.ZERO;
+                    return MonthlyBalance.builder()
+                            .user(user)
+                            .year(year)
+                            .month(month)
+                            .income(baseIncome)
+                            .totalExpenses(BigDecimal.ZERO)
+                            .savings(baseIncome)
+                            .build();
+                });
 
-        balance.setIncome(income);
+        // Retain current income (base income + added deposits)
+        BigDecimal currentIncome = balance.getIncome() != null ? balance.getIncome()
+                : (user.getMonthlyIncome() != null ? user.getMonthlyIncome() : BigDecimal.ZERO);
+
+        BigDecimal savings = currentIncome.subtract(totalSpent);
+
+        balance.setIncome(currentIncome);
         balance.setTotalExpenses(totalSpent);
         balance.setSavings(savings);
 

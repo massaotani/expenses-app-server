@@ -2,10 +2,13 @@ package com.expensesapp.server.model.enums;
 
 public enum ExpenseCategory {
     FOOD,
-    RENT,
+    FIXED_EXPENSES,
     HOUSING,
-    UTILITIES,
+    HEALTHCARE,
     ENTERTAINMENT,
     TRANSPORTATION,
+    CLOTHING,
+    PET,
+    TRAVEL,
     OTHERS
 }

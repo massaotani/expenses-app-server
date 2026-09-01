@@ -50,6 +50,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
 
         if (token.getExpiryDate().isBefore(Instant.now())) {
             refreshTokenRepository.delete(token);
+            refreshTokenRepository.flush();
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token expired");
         }
 
@@ -57,6 +58,8 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
 
         // Rotate token: delete current token and issue fresh pair
         refreshTokenRepository.delete(token);
+        refreshTokenRepository.flush();
+        
         RefreshToken newRefreshToken = createRefreshToken(authUser);
         String newAccessToken = jwtService.generateToken(authUser);
 

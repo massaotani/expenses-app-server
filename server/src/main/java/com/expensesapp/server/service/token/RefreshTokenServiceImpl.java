@@ -24,7 +24,6 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtService jwtService;
 
-    // Configurable in application.properties (defaults to 7 days)
     @Value("${application.security.jwt.refresh-token.expiration:604800000}")
     private long refreshTokenExpirationMs;
 
@@ -56,10 +55,9 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
 
         AuthUser authUser = token.getAuthUser();
 
-        // Rotate token: delete current token and issue fresh pair
         refreshTokenRepository.delete(token);
         refreshTokenRepository.flush();
-        
+
         RefreshToken newRefreshToken = createRefreshToken(authUser);
         String newAccessToken = jwtService.generateToken(authUser);
 

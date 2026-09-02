@@ -11,6 +11,7 @@ import com.expensesapp.server.dto.LoginRequest;
 import com.expensesapp.server.dto.RegisterRequest;
 import com.expensesapp.server.dto.TokenRefreshRequest;
 import com.expensesapp.server.service.authentication.AuthenticationService;
+import com.expensesapp.server.service.token.RefreshTokenService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 public class AuthenticationController {
 
     private final AuthenticationService service;
+    private final RefreshTokenService refreshTokenService;
 
     @PostMapping("/register")
     public ResponseEntity<AuthenticationResponse> register(@Valid @RequestBody RegisterRequest request) {
@@ -34,6 +36,6 @@ public class AuthenticationController {
 
     @PostMapping("/refresh")
     public ResponseEntity<AuthenticationResponse> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
-        return ResponseEntity.ok(service.refreshToken(request));
+        return ResponseEntity.ok(refreshTokenService.verifyAndRotate(request.getRefreshToken()));
     }
 }

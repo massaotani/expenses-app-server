@@ -31,7 +31,12 @@ public class EmailServiceImpl implements EmailService {
         message.setTo(toEmail);
         message.setSubject("Password Reset Code");
         message.setText("Your password reset code is: " + code + "\nIt expires in 15 minutes.");
-        mailSender.send(message);
+        try {
+            mailSender.send(message);
+        } catch (Exception e) {
+            e.printStackTrace(); // Logs the exact exception (e.g., AuthenticationFailedException, MessagingException)
+            throw new RuntimeException("Failed to send email: " + e.getMessage());
+        }
     }
 
     @Override

@@ -27,36 +27,46 @@ public class SecurityConfig {
     private final AuthenticationProvider authenticationProvider;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable())
-                .cors(Customizer.withDefaults())
-                .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/auth/**", "/api/v1/health", "/error").permitAll()
+public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    http.csrf(csrf -> csrf.disable())
+            .cors(Customizer.withDefaults())
+            .authorizeHttpRequests(auth -> auth
+                // Allow only public auth endpoints
+                .requestMatchers(
+                    "/api/v1/auth/login",
+                    "/api/v1/auth/register",
+                    "/api/v1/auth/refresh",
+                    "/api/v1/health",
+                    "/error"
+                ).permitAll()
+                // Explicitly require authentication for change-password
+                .requestMatchers("/api/v1/auth/change-password").authenticated()
                 .anyRequest().authenticated()
-                )
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(exception -> exception
+            )
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(exception -> exception
                 .authenticationEntryPoint((request, response, authException) -> {
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // Returns 401 instead of 403
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     response.setContentType("application/json");
                     response.getWriter().write("{\"status\": 401, \"error\": \"Unauthorized\"}");
                 })
-                )
-                .authenticationProvider(authenticationProvider)
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            )
+            .authenticationProvider(authenticationProvider)
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-        return http.build();
-    }
+    return http.build();
+}
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("*"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+public CorsConfigurationSource corsConfigurationSource() {
+    CorsConfiguration configuration = new CorsConfiguration();
+    configuration.setAllowedOrigins(List.of("*"));
+    // Added PATCH method below:
+    configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+    configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", configuration);
+    return source;
+}
 }

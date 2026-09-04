@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.expensesapp.server.dto.AuthenticationResponse;
+import com.expensesapp.server.dto.ChangePasswordRequest;
 import com.expensesapp.server.dto.LoginRequest;
 import com.expensesapp.server.dto.RegisterRequest;
 import com.expensesapp.server.dto.TokenRefreshRequest;
@@ -113,5 +114,31 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     public AuthenticationResponse refreshToken(TokenRefreshRequest request) {
         return refreshTokenService.verifyAndRotate(request.getRefreshToken());
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(AuthUser authUser, ChangePasswordRequest request) {
+        if (authUser == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User is not authenticated");
+        }
+
+        // Fetch the latest AuthUser state from the DB
+        AuthUser user = repository.findById(authUser.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        // 1. Check if the provided current password matches the stored BCrypt hash
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password does not match");
+        }
+
+        // 2. Prevent reusing the exact same password (optional safeguard)
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password cannot be the same as current password");
+        }
+
+        // 3. Encode and save the new password
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        repository.save(user);
     }
 }

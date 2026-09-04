@@ -1,15 +1,18 @@
 package com.expensesapp.server.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.expensesapp.server.dto.AuthenticationResponse;
+import com.expensesapp.server.dto.ChangePasswordRequest;
 import com.expensesapp.server.dto.LoginRequest;
 import com.expensesapp.server.dto.RegisterRequest;
 import com.expensesapp.server.dto.TokenRefreshRequest;
+import com.expensesapp.server.model.AuthUser;
 import com.expensesapp.server.service.authentication.AuthenticationService;
 import com.expensesapp.server.service.token.RefreshTokenService;
 
@@ -37,5 +40,13 @@ public class AuthenticationController {
     @PostMapping("/refresh")
     public ResponseEntity<AuthenticationResponse> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
         return ResponseEntity.ok(refreshTokenService.verifyAndRotate(request.getRefreshToken()));
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(
+            @AuthenticationPrincipal AuthUser authUser,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        service.changePassword(authUser, request);
+        return ResponseEntity.ok().build();
     }
 }

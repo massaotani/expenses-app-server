@@ -18,17 +18,26 @@ public class UserResponseDto {
 
     private UUID id;
     private String name;
+    private String email;
     private BigDecimal monthlyIncome;
     private BigDecimal investmentPot;
     private BigDecimal monthlyExpenses;
+    private String token;
 
-    public static UserResponseDto fromEntity(User user) {
+    public static UserResponseDto fromEntity(User user, String email) {
+        return fromEntity(user, email, null);
+    }
+
+    public static UserResponseDto fromEntity(User user, String email, String token) {
+
         return UserResponseDto.builder()
                 .id(user.getId())
                 .name(user.getName())
+                .email(email)
                 .monthlyIncome(user.getMonthlyIncome())
                 .investmentPot(user.getInvestmentPot())
                 .monthlyExpenses(user.getMonthlyExpenses())
+                .token(token)
                 .build();
     }
 }

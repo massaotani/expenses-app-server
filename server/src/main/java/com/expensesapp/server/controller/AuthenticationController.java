@@ -1,5 +1,7 @@
 package com.expensesapp.server.controller;
 
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,6 +16,7 @@ import com.expensesapp.server.dto.RegisterRequest;
 import com.expensesapp.server.dto.TokenRefreshRequest;
 import com.expensesapp.server.model.AuthUser;
 import com.expensesapp.server.service.authentication.AuthenticationService;
+import com.expensesapp.server.service.email.EmailService;
 import com.expensesapp.server.service.token.RefreshTokenService;
 
 import jakarta.validation.Valid;
@@ -24,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AuthenticationController {
 
+    private final EmailService emailService;
     private final AuthenticationService service;
     private final RefreshTokenService refreshTokenService;
 
@@ -48,5 +52,27 @@ public class AuthenticationController {
             @Valid @RequestBody ChangePasswordRequest request) {
         service.changePassword(authUser, request);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
+        try {
+            emailService.processForgotPassword(request.get("email"));
+            return ResponseEntity.ok(Map.of("message", "If an account exists, a reset code was sent."));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("message", "Failed to send email. Check SMTP settings."));
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> request) {
+        try {
+            emailService.processResetPassword(request.get("email"), request.get("code"), request.get("newPassword"));
+            return ResponseEntity.ok(Map.of("message", "Password updated successfully."));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 }

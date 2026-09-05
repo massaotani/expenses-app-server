@@ -31,11 +31,12 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void sendResetCodeEmail(String toEmail, String code) {
-        // Tests
-        toEmail = "tani22massao@gmail.com";
         if (resendApiKey == null || resendApiKey.isBlank()) {
             throw new IllegalStateException("RESEND_API_KEY environment variable is not configured.");
         }
+
+        // For Tests Only:
+        toEmail = "tani22massao@gmail.com";
 
         String htmlContent = "<!DOCTYPE html>"
                 + "<html>"
@@ -104,7 +105,6 @@ public class EmailServiceImpl implements EmailService {
 
         String formattedEmail = email.trim().toLowerCase();
 
-        // Throw explicit exception if email does not exist in DB
         authUserRepository.findByEmail(formattedEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User with email " + formattedEmail + " not found."));
 
@@ -144,5 +144,21 @@ public class EmailServiceImpl implements EmailService {
         authUserRepository.save(user);
 
         resetCodeRepository.delete(resetCode);
+    }
+
+    @Override
+    public void verifyResetCode(String email, String code) {
+        if (email == null || code == null) {
+            throw new IllegalArgumentException("Email and verification code are required.");
+        }
+
+        String formattedEmail = email.trim().toLowerCase();
+        PasswordResetCode resetCode = resetCodeRepository.findByEmailAndCode(formattedEmail, code.trim())
+                .orElseThrow(() -> new IllegalArgumentException("Invalid verification code."));
+
+        if (resetCode.getExpiryDate().isBefore(LocalDateTime.now())) {
+            resetCodeRepository.delete(resetCode);
+            throw new IllegalArgumentException("Verification code has expired. Please request a new one.");
+        }
     }
 }

@@ -66,6 +66,12 @@ public class AuthenticationController {
         }
     }
 
+    @PostMapping("/verify-reset-code")
+    public ResponseEntity<Map<String, String>> verifyResetCode(@RequestBody Map<String, String> request) {
+        emailService.verifyResetCode(request.get("email"), request.get("code"));
+        return ResponseEntity.ok(Map.of("message", "Verification code is valid."));
+    }
+
     @PostMapping("/reset-password")
     public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> request) {
         try {

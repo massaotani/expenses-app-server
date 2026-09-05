@@ -35,9 +35,6 @@ public class EmailServiceImpl implements EmailService {
             throw new IllegalStateException("RESEND_API_KEY environment variable is not configured.");
         }
 
-        // For Tests Only:
-        toEmail = "tani22massao@gmail.com";
-
         String htmlContent = "<!DOCTYPE html>"
                 + "<html>"
                 + "<head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'></head>"
@@ -87,7 +84,7 @@ public class EmailServiceImpl implements EmailService {
                 .header("Authorization", "Bearer " + resendApiKey)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of(
-                        "from", "Ledger App <onboarding@resend.dev>",
+                        "from", "Ledger App <noreply@yourdomain.com>",
                         "to", new String[]{toEmail},
                         "subject", "Password Reset Code",
                         "html", htmlContent
@@ -105,20 +102,19 @@ public class EmailServiceImpl implements EmailService {
 
         String formattedEmail = email.trim().toLowerCase();
 
-        authUserRepository.findByEmail(formattedEmail)
-                .orElseThrow(() -> new IllegalArgumentException("User with email " + formattedEmail + " not found."));
+        authUserRepository.findByEmail(formattedEmail).ifPresent(user -> {
+            resetCodeRepository.deleteByEmail(formattedEmail);
 
-        resetCodeRepository.deleteByEmail(formattedEmail);
+            String code = String.format("%06d", new Random().nextInt(900000) + 100000);
+            PasswordResetCode resetCode = PasswordResetCode.builder()
+                    .email(formattedEmail)
+                    .code(code)
+                    .expiryDate(LocalDateTime.now().plusMinutes(15))
+                    .build();
 
-        String code = String.format("%06d", new Random().nextInt(900000) + 100000);
-        PasswordResetCode resetCode = PasswordResetCode.builder()
-                .email(formattedEmail)
-                .code(code)
-                .expiryDate(LocalDateTime.now().plusMinutes(15))
-                .build();
-
-        resetCodeRepository.save(resetCode);
-        sendResetCodeEmail(formattedEmail, code);
+            resetCodeRepository.save(resetCode);
+            sendResetCodeEmail(formattedEmail, code);
+        });
     }
 
     @Override

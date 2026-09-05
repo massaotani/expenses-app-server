@@ -1,20 +1,21 @@
 package com.expensesapp.server.service.email;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Random;
 
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClient;
 
 import com.expensesapp.server.model.AuthUser;
 import com.expensesapp.server.model.PasswordResetCode;
 import com.expensesapp.server.repository.AuthUserRepository;
 import com.expensesapp.server.repository.PasswordResetCodeRepository;
 
-import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -24,19 +25,13 @@ public class EmailServiceImpl implements EmailService {
     private final PasswordResetCodeRepository resetCodeRepository;
     private final AuthUserRepository authUserRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JavaMailSender mailSender;
+
+    @Value("${RESEND_API_KEY:}")
+    private String resendApiKey;
 
     @Override
     public void sendResetCodeEmail(String toEmail, String code) {
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setFrom("ledger.app.noreply@gmail.com", "Ledger App");
-            helper.setTo(toEmail);
-            helper.setSubject("Password Reset Code");
-
-            String htmlContent = "<!DOCTYPE html>"
+        String htmlContent = "<!DOCTYPE html>"
                 + "<html>"
                 + "<head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'></head>"
                 + "<body style='margin:0; padding:0; background-color:#F4F6F8; font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;'>"
@@ -78,13 +73,20 @@ public class EmailServiceImpl implements EmailService {
                 + "</body>"
                 + "</html>";
 
-            helper.setText(htmlContent, true);
-            mailSender.send(message);
+        RestClient restClient = RestClient.create();
 
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Failed to send email via Gmail SMTP: " + e.getMessage());
-        }
+        restClient.post()
+                .uri("https://api.resend.com/emails")
+                .header("Authorization", "Bearer " + resendApiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of(
+                        "from", "Ledger App <onboarding@resend.dev>",
+                        "to", new String[]{toEmail},
+                        "subject", "Password Reset Code",
+                        "html", htmlContent
+                ))
+                .retrieve()
+                .toBodilessEntity();
     }
 
     @Override

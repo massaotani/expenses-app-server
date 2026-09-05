@@ -31,6 +31,8 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void sendResetCodeEmail(String toEmail, String code) {
+        // Tests
+        toEmail = "tani22massao@gmail.com";
         if (resendApiKey == null || resendApiKey.isBlank()) {
             throw new IllegalStateException("RESEND_API_KEY environment variable is not configured.");
         }

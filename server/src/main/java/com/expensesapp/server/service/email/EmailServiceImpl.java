@@ -31,6 +31,10 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void sendResetCodeEmail(String toEmail, String code) {
+        if (resendApiKey == null || resendApiKey.isBlank()) {
+            throw new IllegalStateException("RESEND_API_KEY environment variable is not configured.");
+        }
+
         String htmlContent = "<!DOCTYPE html>"
                 + "<html>"
                 + "<head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'></head>"
@@ -98,19 +102,21 @@ public class EmailServiceImpl implements EmailService {
 
         String formattedEmail = email.trim().toLowerCase();
 
-        if (authUserRepository.findByEmail(formattedEmail).isPresent()) {
-            resetCodeRepository.deleteByEmail(formattedEmail);
+        // Throw explicit exception if email does not exist in DB
+        authUserRepository.findByEmail(formattedEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User with email " + formattedEmail + " not found."));
 
-            String code = String.format("%06d", new Random().nextInt(900000) + 100000);
-            PasswordResetCode resetCode = PasswordResetCode.builder()
-                    .email(formattedEmail)
-                    .code(code)
-                    .expiryDate(LocalDateTime.now().plusMinutes(15))
-                    .build();
+        resetCodeRepository.deleteByEmail(formattedEmail);
 
-            resetCodeRepository.save(resetCode);
-            sendResetCodeEmail(formattedEmail, code);
-        }
+        String code = String.format("%06d", new Random().nextInt(900000) + 100000);
+        PasswordResetCode resetCode = PasswordResetCode.builder()
+                .email(formattedEmail)
+                .code(code)
+                .expiryDate(LocalDateTime.now().plusMinutes(15))
+                .build();
+
+        resetCodeRepository.save(resetCode);
+        sendResetCodeEmail(formattedEmail, code);
     }
 
     @Override

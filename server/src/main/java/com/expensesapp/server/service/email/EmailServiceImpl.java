@@ -3,8 +3,8 @@ package com.expensesapp.server.service.email;
 import java.time.LocalDateTime;
 import java.util.Random;
 
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +14,7 @@ import com.expensesapp.server.model.PasswordResetCode;
 import com.expensesapp.server.repository.AuthUserRepository;
 import com.expensesapp.server.repository.PasswordResetCodeRepository;
 
+import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -27,15 +28,62 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void sendResetCodeEmail(String toEmail, String code) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(toEmail);
-        message.setSubject("Password Reset Code");
-        message.setText("Your password reset code is: " + code + "\nIt expires in 15 minutes.");
         try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom("ledger.app.noreply@gmail.com", "Ledger App");
+            helper.setTo(toEmail);
+            helper.setSubject("Password Reset Code");
+
+            String htmlContent = "<!DOCTYPE html>"
+                + "<html>"
+                + "<head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'></head>"
+                + "<body style='margin:0; padding:0; background-color:#F4F6F8; font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;'>"
+                + "  <table role='presentation' width='100%' cellspacing='0' cellpadding='0' style='background-color:#F4F6F8; padding: 40px 10px;'>"
+                + "    <tr>"
+                + "      <td align='center'>"
+                + "        <table role='presentation' width='100%' cellspacing='0' cellpadding='0' style='max-width:500px; background-color:#FFFFFF; border-radius:16px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.05); border: 1px solid #E5E7EB;'>"
+                + "          <tr>"
+                + "            <td style='background-color:#0D9488; padding:32px 24px; text-align:center;'>"
+                + "              <h1 style='color:#FFFFFF; margin:0; font-size:22px; font-weight:800; letter-spacing:2px;'>LEDGER</h1>"
+                + "            </td>"
+                + "          </tr>"
+                + "          <tr>"
+                + "            <td style='padding:32px 32px 24px 32px; color:#1F2937;'>"
+                + "              <h2 style='margin:0 0 12px 0; font-size:18px; font-weight:700; color:#111827;'>Password Reset Request</h2>"
+                + "              <p style='margin:0 0 24px 0; font-size:14px; line-height:1.6; color:#4B5563;'>"
+                + "                We received a request to reset the password for your <strong>Ledger</strong> account. Use the verification code below to complete the process:"
+                + "              </p>"
+                + "              <div style='background-color:#F9FAFB; border:1px dashed #0D9488; border-radius:12px; padding:20px; text-align:center; margin-bottom:24px;'>"
+                + "                <span style='display:inline-block; font-size:32px; font-weight:800; letter-spacing:8px; color:#0D9488; font-family:monospace;'>" + code + "</span>"
+                + "              </div>"
+                + "              <p style='margin:0 0 16px 0; font-size:13px; line-height:1.5; color:#6B7280;'>"
+                + "                ⏱️ This code is valid for <strong>15 minutes</strong> and can only be used once."
+                + "              </p>"
+                + "              <p style='margin:0; font-size:13px; line-height:1.5; color:#9CA3AF; border-top:1px solid #F3F4F6; padding-top:16px;'>"
+                + "                If you didn't request a password reset, you can safely ignore this email—your account remains secure."
+                + "              </p>"
+                + "            </td>"
+                + "          </tr>"
+                + "          <tr>"
+                + "            <td style='background-color:#F9FAFB; padding:20px 32px; text-align:center; border-top:1px solid #E5E7EB;'>"
+                + "              <p style='margin:0; font-size:12px; color:#9CA3AF;'>&copy; 2026 Ledger Financial App. All rights reserved.</p>"
+                + "            </td>"
+                + "          </tr>"
+                + "        </table>"
+                + "      </td>"
+                + "    </tr>"
+                + "  </table>"
+                + "</body>"
+                + "</html>";
+
+            helper.setText(htmlContent, true);
             mailSender.send(message);
+
         } catch (Exception e) {
-            e.printStackTrace(); // Logs the exact exception (e.g., AuthenticationFailedException, MessagingException)
-            throw new RuntimeException("Failed to send email: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to send email via Gmail SMTP: " + e.getMessage());
         }
     }
 
